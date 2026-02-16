@@ -1,0 +1,16 @@
+{
+  "required_success_keys": [
+    "status",
+    "message",
+    "summary",
+    "metadata",
+    "iteration_count",
+    "target_language"
+  ],
+  "required_error_cases": [
+    "invalid_url",
+    "missing_llm_provider_keys",
+    "schema_validation_failure"
+  ],
+  "provider_resolution_order": ["gemini", "openrouter"]
+}

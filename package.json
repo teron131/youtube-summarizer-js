@@ -1,0 +1,33 @@
+{
+  "name": "youtube-summarizer-js-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript MCP server migration for YouTube summarizer",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx mcpServer.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@google/genai": "^1.41.0",
+    "@langchain/core": "^1.1.24",
+    "@langchain/openai": "^1.2.7",
+    "dotenv": "^17.2.3",
+    "fastmcp": "^3.33.0",
+    "langchain": "^1.2.24",
+    "opencc-js": "^1.0.5",
+    "undici": "^7.16.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.8.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

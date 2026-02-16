@@ -1,0 +1,15 @@
+{
+  "required_success_keys": [
+    "status",
+    "message",
+    "url",
+    "transcript",
+    "metadata"
+  ],
+  "required_metadata_keys": ["processing_time"],
+  "required_error_cases": [
+    "invalid_url",
+    "missing_transcript_provider_keys",
+    "provider_failure"
+  ]
+}

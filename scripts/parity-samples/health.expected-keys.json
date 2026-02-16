@@ -1,0 +1,9 @@
+{
+  "required_top_level_keys": ["status", "message", "timestamp", "environment"],
+  "required_environment_keys": [
+    "gemini_configured",
+    "openrouter_configured",
+    "scrapecreators_configured",
+    "supadata_configured"
+  ]
+}
