@@ -8,20 +8,25 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "tsx mcpServer.ts",
+    "dev": "tsx mcp/server.ts",
+    "dev:worker": "wrangler dev",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy:worker": "wrangler deploy"
   },
   "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.2.3",
     "@google/genai": "^1.41.0",
     "@langchain/core": "^1.1.24",
     "@langchain/openai": "^1.2.7",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "agents": "^0.4.1",
     "dotenv": "^17.2.3",
     "fastmcp": "^3.33.0",
     "langchain": "^1.2.24",
     "opencc-js": "^1.0.5",
-    "undici": "^7.16.0",
+    "wrangler": "^4.65.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {

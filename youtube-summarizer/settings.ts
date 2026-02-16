@@ -1,7 +1,3 @@
-import { config as loadDotEnv } from "dotenv";
-
-loadDotEnv();
-
 export type TargetLanguage = "auto" | "en" | "zh";
 export type OpenRouterReasoningEffort = "minimal" | "low" | "medium" | "high";
 export type McpAuthMode = "none" | "google_oauth";
@@ -95,6 +91,24 @@ function asMcpAuthMode(value: string | undefined): McpAuthMode {
 }
 
 let cachedSettings: AppSettings | null = null;
+let runtimeEnv: Record<string, string | undefined> | null = null;
+
+function readEnv(name: string): string | undefined {
+  if (runtimeEnv && Object.hasOwn(runtimeEnv, name)) {
+    return runtimeEnv[name];
+  }
+  if (typeof process !== "undefined" && process.env) {
+    return process.env[name];
+  }
+  return undefined;
+}
+
+export function setRuntimeEnv(
+  env: Record<string, string | undefined> | null,
+): void {
+  runtimeEnv = env;
+  resetSettingsCache();
+}
 
 export function getSettings(): AppSettings {
   if (cachedSettings) {
@@ -102,48 +116,45 @@ export function getSettings(): AppSettings {
   }
 
   cachedSettings = {
-    apiTitle: process.env.API_TITLE ?? DEFAULTS.apiTitle,
-    defaultTargetLanguage: asTargetLanguage(
-      process.env.DEFAULT_TARGET_LANGUAGE,
-    ),
+    apiTitle: readEnv("API_TITLE") ?? DEFAULTS.apiTitle,
+    defaultTargetLanguage: asTargetLanguage(readEnv("DEFAULT_TARGET_LANGUAGE")),
     scrapeTimeoutSeconds: asNumber(
-      process.env.SCRAPE_TIMEOUT_SECONDS,
+      readEnv("SCRAPE_TIMEOUT_SECONDS"),
       DEFAULTS.scrapeTimeoutSeconds,
     ),
     llmTimeoutSeconds: asNumber(
-      process.env.LLM_TIMEOUT_SECONDS,
+      readEnv("LLM_TIMEOUT_SECONDS"),
       DEFAULTS.llmTimeoutSeconds,
     ),
     taskTimeoutSeconds: asNumber(
-      process.env.TASK_TIMEOUT_SECONDS,
+      readEnv("TASK_TIMEOUT_SECONDS"),
       DEFAULTS.taskTimeoutSeconds,
     ),
     scrapecreatorsTranscriptUrl:
-      process.env.SCRAPECREATORS_TRANSCRIPT_URL ??
+      readEnv("SCRAPECREATORS_TRANSCRIPT_URL") ??
       DEFAULTS.scrapecreatorsTranscriptUrl,
     supadataTranscriptUrl:
-      process.env.SUPADATA_TRANSCRIPT_URL ?? DEFAULTS.supadataTranscriptUrl,
+      readEnv("SUPADATA_TRANSCRIPT_URL") ?? DEFAULTS.supadataTranscriptUrl,
     openrouterSummaryModel:
-      process.env.OPENROUTER_SUMMARY_MODEL ?? DEFAULTS.openrouterSummaryModel,
+      readEnv("OPENROUTER_SUMMARY_MODEL") ?? DEFAULTS.openrouterSummaryModel,
     openrouterReasoningEffort: asReasoningEffort(
-      process.env.OPENROUTER_REASONING_EFFORT,
+      readEnv("OPENROUTER_REASONING_EFFORT"),
     ),
     geminiSummaryModel:
-      process.env.GEMINI_SUMMARY_MODEL ?? DEFAULTS.geminiSummaryModel,
+      readEnv("GEMINI_SUMMARY_MODEL") ?? DEFAULTS.geminiSummaryModel,
     geminiThinkingLevel:
-      process.env.GEMINI_THINKING_LEVEL ?? DEFAULTS.geminiThinkingLevel,
-    mcpAuthMode: asMcpAuthMode(process.env.MCP_AUTH_MODE),
-    mcpServerBaseUrl: asOptional(process.env.MCP_SERVER_BASE_URL),
-    mcpGoogleClientId: asOptional(process.env.MCP_GOOGLE_CLIENT_ID),
-    mcpGoogleClientSecret: asOptional(process.env.MCP_GOOGLE_CLIENT_SECRET),
+      readEnv("GEMINI_THINKING_LEVEL") ?? DEFAULTS.geminiThinkingLevel,
+    mcpAuthMode: asMcpAuthMode(readEnv("MCP_AUTH_MODE")),
+    mcpServerBaseUrl: asOptional(readEnv("MCP_SERVER_BASE_URL")),
+    mcpGoogleClientId: asOptional(readEnv("MCP_GOOGLE_CLIENT_ID")),
+    mcpGoogleClientSecret: asOptional(readEnv("MCP_GOOGLE_CLIENT_SECRET")),
     mcpGoogleRequiredScopes:
-      process.env.MCP_GOOGLE_REQUIRED_SCOPES ??
-      DEFAULTS.mcpGoogleRequiredScopes,
-    openrouterApiKey: asOptional(process.env.OPENROUTER_API_KEY),
-    geminiApiKey: asOptional(process.env.GEMINI_API_KEY),
-    googleApiKey: asOptional(process.env.GOOGLE_API_KEY),
-    scrapecreatorsApiKey: asOptional(process.env.SCRAPECREATORS_API_KEY),
-    supadataApiKey: asOptional(process.env.SUPADATA_API_KEY),
+      readEnv("MCP_GOOGLE_REQUIRED_SCOPES") ?? DEFAULTS.mcpGoogleRequiredScopes,
+    openrouterApiKey: asOptional(readEnv("OPENROUTER_API_KEY")),
+    geminiApiKey: asOptional(readEnv("GEMINI_API_KEY")),
+    googleApiKey: asOptional(readEnv("GOOGLE_API_KEY")),
+    scrapecreatorsApiKey: asOptional(readEnv("SCRAPECREATORS_API_KEY")),
+    supadataApiKey: asOptional(readEnv("SUPADATA_API_KEY")),
   };
 
   return cachedSettings;

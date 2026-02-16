@@ -1,5 +1,3 @@
-import { Agent, fetch } from "undici";
-
 import { getSettings } from "../settings.js";
 
 export interface TranscriptSegment {
@@ -38,8 +36,6 @@ export interface YouTubeScrapperResult {
   availableLangs?: string[] | null;
 }
 
-const HTTP_AGENT = new Agent({ connect: { timeout: 30_000 } });
-
 export async function fetch_scrape_creators(
   video_url: string,
 ): Promise<YouTubeScrapperResult | null> {
@@ -57,7 +53,6 @@ export async function fetch_scrape_creators(
         headers: {
           "x-api-key": settings.scrapecreatorsApiKey,
         },
-        dispatcher: HTTP_AGENT,
         signal: AbortSignal.timeout(settings.scrapeTimeoutSeconds * 1000),
       },
     );

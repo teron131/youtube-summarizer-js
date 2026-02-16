@@ -1,13 +1,9 @@
-import { Agent, fetch } from "undici";
-
 import { getSettings } from "../settings.js";
 import { extractVideoId } from "../utils.js";
 import type {
   TranscriptSegment,
   YouTubeScrapperResult,
 } from "./scrapeCreators.js";
-
-const HTTP_AGENT = new Agent({ connect: { timeout: 30_000 } });
 
 export async function fetch_supadata(
   video_url: string,
@@ -32,7 +28,6 @@ export async function fetch_supadata(
         headers: {
           "x-api-key": settings.supadataApiKey,
         },
-        dispatcher: HTTP_AGENT,
         signal: AbortSignal.timeout(settings.scrapeTimeoutSeconds * 1000),
       },
     );

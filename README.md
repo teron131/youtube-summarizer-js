@@ -7,13 +7,17 @@ TypeScript MCP server for YouTube transcript scraping and summarization.
 - Node.js 20+
 - pnpm
 - FastMCP
+- Cloudflare Workers
 - LangChain
 - Google Gemini / OpenRouter
 
 ## Project Layout
 
-- `mcpServer.ts`: MCP server entrypoint
-- `mcpServer.ts`: MCP tool registrations and implementations
+- `mcp/server.ts`: Node stdio MCP entrypoint
+- `mcp/core.ts`: shared MCP tool business logic
+- `mcp/tools.ts`: runtime adapters for Node FastMCP and Cloudflare MCP
+- `mcp/worker.ts`: OAuth-enabled Cloudflare Worker entrypoint
+- `mcp/auth-handler.ts`: Cloudflare Access OAuth flow handler
 - `youtube-summarizer/*`: core modules
 - `tests/*`: test suite
 
@@ -29,12 +33,24 @@ pnpm install
 pnpm dev
 ```
 
+### Run Worker locally
+
+```bash
+pnpm dev:worker
+```
+
 ## Validate
 
 ```bash
 pnpm typecheck
 pnpm test
 pnpm build
+```
+
+## Deploy Worker
+
+```bash
+pnpm deploy:worker
 ```
 
 ## MCP Tools

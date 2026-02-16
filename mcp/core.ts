@@ -1,34 +1,31 @@
-import { FastMCP } from "fastmcp";
-import { z } from "zod";
-
 import {
   getSettings,
   hasGemini,
   hasOpenRouter,
   hasScrapeCreators,
   hasSupadata,
-} from "./youtube-summarizer/settings.js";
-import { resolveProvider } from "./youtube-summarizer/providerResolver.js";
+} from "../youtube-summarizer/settings.js";
+import { resolveProvider } from "../youtube-summarizer/providerResolver.js";
 import {
   extractTranscriptText,
   hasTranscriptProviderKey,
-} from "./youtube-summarizer/scraper/scraper.js";
-import { summarizerGemini } from "./youtube-summarizer/summarizerGemini.js";
-import { summarizerOpenRouter } from "./youtube-summarizer/summarizerOpenRouter.js";
+} from "../youtube-summarizer/scraper/scraper.js";
+import { summarizerGemini } from "../youtube-summarizer/summarizerGemini.js";
+import { summarizerOpenRouter } from "../youtube-summarizer/summarizerOpenRouter.js";
 import {
   cleanYoutubeUrl,
   isYoutubeUrl,
   processingTime,
-} from "./youtube-summarizer/utils.js";
+} from "../youtube-summarizer/utils.js";
 
-const TOOL_DESCRIPTIONS = {
+export const TOOL_DESCRIPTIONS = {
   health: "Return MCP server health and provider key availability.",
   scrape: "Fetch normalized transcript text from a YouTube URL.",
   summarize:
     "Generate summary from a YouTube URL using internal provider fallback.",
 } as const;
 
-type ToolResult = Record<string, unknown>;
+export type ToolResult = Record<string, unknown>;
 
 function validateUrl(url: string): string {
   const normalized = url.trim();
@@ -70,7 +67,7 @@ function buildSummarySuccessResult(
   };
 }
 
-function toToolTextResult(payload: ToolResult): {
+export function toToolTextResult(payload: ToolResult): {
   content: { type: "text"; text: string }[];
 } {
   return {
@@ -151,57 +148,4 @@ export async function summarizeTool(url: string): Promise<ToolResult> {
     resolvedTargetLanguage,
     buildMetadata(start),
   );
-}
-
-export function createMcpServer(): FastMCP {
-  const server = new FastMCP({
-    name: "YouTube Summarizer MCP",
-    version: "0.1.0",
-  });
-
-  server.addTool({
-    name: "health",
-    description: TOOL_DESCRIPTIONS.health,
-    execute: async () => {
-      return toToolTextResult(await healthTool());
-    },
-  });
-
-  server.addTool({
-    name: "scrape",
-    description: TOOL_DESCRIPTIONS.scrape,
-    parameters: z.object({
-      url: z.string(),
-    }),
-    execute: async ({ url }) => {
-      return toToolTextResult(await scrapeTool(url));
-    },
-  });
-
-  server.addTool({
-    name: "summarize",
-    description: TOOL_DESCRIPTIONS.summarize,
-    parameters: z.object({
-      url: z.string(),
-    }),
-    execute: async ({ url }) => {
-      return toToolTextResult(await summarizeTool(url));
-    },
-  });
-
-  return server;
-}
-
-async function main(): Promise<void> {
-  const server = createMcpServer();
-  await server.start({
-    transportType: "stdio",
-  });
-}
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
-    console.error("MCP server failed:", error);
-    process.exit(1);
-  });
 }

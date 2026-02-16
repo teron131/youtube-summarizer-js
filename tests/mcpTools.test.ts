@@ -18,7 +18,7 @@ describe("mcp tools", () => {
     const { resetSettingsCache } =
       await import("../youtube-summarizer/settings.js");
     resetSettingsCache();
-    const { healthTool } = await import("../mcpServer.js");
+    const { healthTool } = await import("../mcp/server.js");
 
     const result = await healthTool();
     expect(result.status).toBe("healthy");
@@ -29,7 +29,7 @@ describe("mcp tools", () => {
   });
 
   it("scrape validates URL", async () => {
-    const { scrapeTool } = await import("../mcpServer.js");
+    const { scrapeTool } = await import("../mcp/server.js");
     await expect(scrapeTool("https://example.com/video")).rejects.toThrow(
       "Invalid YouTube URL",
     );

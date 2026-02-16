@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "youtube-summarizer-mcp",
+  "main": "mcp/worker.ts",
+  "compatibility_date": "DATE",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "KV_ID"
+    }
+  ]
+}

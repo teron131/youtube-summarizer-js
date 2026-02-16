@@ -1,14 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchMock = vi.fn();
 
-vi.mock("undici", () => ({
-  fetch: fetchMock,
-  Agent: class {},
-}));
-
 describe("scraper", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
+    vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockReset();
     // Keep keys explicitly empty so dotenv does not repopulate them from .env.
     process.env.SCRAPECREATORS_API_KEY = "";
