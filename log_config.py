@@ -1,0 +1,13 @@
+"""Logging configuration with stdout streaming for production environments."""
+
+import logging
+import sys
+
+
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+    sys.stdout.reconfigure(line_buffering=True)
