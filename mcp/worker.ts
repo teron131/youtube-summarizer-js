@@ -36,7 +36,7 @@ const apiHandler = {
     setRuntimeEnv(toStringEnv(env));
     try {
       const server = buildServer();
-      const handler = createMcpHandler(server, { route: "/mcp" });
+      const handler = createMcpHandler(server, { route: "/" });
       return await handler(request, env, ctx);
     } finally {
       setRuntimeEnv(null);
@@ -45,7 +45,7 @@ const apiHandler = {
 };
 
 export default new OAuthProvider({
-  apiRoute: "/mcp",
+  apiRoute: "/",
   apiHandler,
   authorizeEndpoint: "/authorize",
   tokenEndpoint: "/token",

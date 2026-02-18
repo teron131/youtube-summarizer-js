@@ -13,7 +13,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "deploy:worker": "wrangler deploy"
+    "deploy:worker": "bash scripts/sync_worker_secrets.sh && wrangler deploy"
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.2.3",

@@ -27,12 +27,10 @@ interface OAuthProviderHelpers {
 }
 
 interface WorkerOAuthEnv extends Record<string, unknown> {
-  GOOGLE_AUTHORIZATION_URL?: string;
   GOOGLE_CLIENT_ID?: string;
   GOOGLE_CLIENT_SECRET?: string;
   GOOGLE_REDIRECT_URI?: string;
   GOOGLE_SCOPE?: string;
-  GOOGLE_TOKEN_URL?: string;
   OAUTH_KV: {
     delete(key: string): Promise<void>;
     get(key: string): Promise<string | null>;
@@ -66,19 +64,6 @@ function asTrimmedString(value: unknown): string | null {
   }
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
-}
-
-function resolveGoogleEndpoint(
-  env: WorkerOAuthEnv,
-  type: "authorization" | "token",
-): string {
-  if (type === "authorization") {
-    return (
-      asTrimmedString(env.GOOGLE_AUTHORIZATION_URL) ??
-      DEFAULT_GOOGLE_AUTHORIZATION_URL
-    );
-  }
-  return asTrimmedString(env.GOOGLE_TOKEN_URL) ?? DEFAULT_GOOGLE_TOKEN_URL;
 }
 
 function resolveGoogleScope(env: WorkerOAuthEnv): string {
@@ -117,6 +102,15 @@ function oauthStateKey(state: string): string {
   return `${AUTH_STATE_PREFIX}${state}`;
 }
 
+function oauthProtectedResourceMetadata(request: Request): Record<string, unknown> {
+  const origin = new URL(request.url).origin;
+  return {
+    resource: `${origin}/`,
+    authorization_servers: [origin],
+    bearer_methods_supported: ["header"],
+  };
+}
+
 function oauthConfigHealth(
   request: Request,
   env: WorkerOAuthEnv,
@@ -124,10 +118,6 @@ function oauthConfigHealth(
   const hasClientId = Boolean(asTrimmedString(env.GOOGLE_CLIENT_ID));
   const hasClientSecret = Boolean(asTrimmedString(env.GOOGLE_CLIENT_SECRET));
   const hasRedirectUri = Boolean(asTrimmedString(env.GOOGLE_REDIRECT_URI));
-  const hasCustomAuthorizationUrl = Boolean(
-    asTrimmedString(env.GOOGLE_AUTHORIZATION_URL),
-  );
-  const hasCustomTokenUrl = Boolean(asTrimmedString(env.GOOGLE_TOKEN_URL));
 
   const missing: string[] = [];
   if (!hasClientId) {
@@ -141,12 +131,10 @@ function oauthConfigHealth(
     ready: missing.length === 0,
     provider: "google",
     callback_url: callbackUrl(request, env),
-    authorization_url: resolveGoogleEndpoint(env, "authorization"),
-    token_url: resolveGoogleEndpoint(env, "token"),
+    authorization_url: DEFAULT_GOOGLE_AUTHORIZATION_URL,
+    token_url: DEFAULT_GOOGLE_TOKEN_URL,
     scope: resolveGoogleScope(env),
     has_redirect_uri_override: hasRedirectUri,
-    has_custom_authorization_url: hasCustomAuthorizationUrl,
-    has_custom_token_url: hasCustomTokenUrl,
     has_client_id: hasClientId,
     has_client_secret: hasClientSecret,
     missing,
@@ -158,7 +146,6 @@ async function exchangeGoogleToken(
   env: WorkerOAuthEnv,
   code: string,
 ): Promise<TokenResponse> {
-  const tokenUrl = resolveGoogleEndpoint(env, "token");
   const clientId = ensureSecret(env.GOOGLE_CLIENT_ID, "GOOGLE_CLIENT_ID");
   const clientSecret = ensureSecret(
     env.GOOGLE_CLIENT_SECRET,
@@ -173,7 +160,7 @@ async function exchangeGoogleToken(
     redirect_uri: callbackUrl(request, env),
   });
 
-  const response = await fetch(tokenUrl, {
+  const response = await fetch(DEFAULT_GOOGLE_TOKEN_URL, {
     method: "POST",
     headers: {
       "content-type": "application/x-www-form-urlencoded",
@@ -205,15 +192,21 @@ export const googleOAuthDefaultHandler = {
       });
     }
 
+    if (
+      url.pathname === "/.well-known/oauth-protected-resource" ||
+      url.pathname === "/.well-known/oauth-protected-resource/"
+    ) {
+      return Response.json(oauthProtectedResourceMetadata(request));
+    }
+
     if (url.pathname === "/authorize") {
       const oauthRequest = await env.OAUTH_PROVIDER.parseAuthRequest(request);
-      const authorizationUrl = resolveGoogleEndpoint(env, "authorization");
       const state = crypto.randomUUID();
       await env.OAUTH_KV.put(oauthStateKey(state), JSON.stringify(oauthRequest), {
         expirationTtl: AUTH_STATE_TTL_SECONDS,
       });
 
-      const authUrl = new URL(authorizationUrl);
+      const authUrl = new URL(DEFAULT_GOOGLE_AUTHORIZATION_URL);
       authUrl.searchParams.set(
         "client_id",
         ensureSecret(env.GOOGLE_CLIENT_ID, "GOOGLE_CLIENT_ID"),
