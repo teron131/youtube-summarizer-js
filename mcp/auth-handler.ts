@@ -4,6 +4,10 @@ const DEFAULT_GOOGLE_AUTHORIZATION_URL =
   "https://accounts.google.com/o/oauth2/v2/auth";
 const DEFAULT_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const DEFAULT_GOOGLE_SCOPE = "openid profile email";
+const OAUTH_PROTECTED_RESOURCE_PATHS = new Set([
+  "/.well-known/oauth-protected-resource",
+  "/.well-known/oauth-protected-resource/",
+]);
 
 interface OAuthAuthRequest {
   clientId: string;
@@ -91,8 +95,9 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 }
 
 function callbackUrl(request: Request, env: WorkerOAuthEnv): string {
-  if (typeof env.GOOGLE_REDIRECT_URI === "string" && env.GOOGLE_REDIRECT_URI) {
-    return env.GOOGLE_REDIRECT_URI;
+  const redirectUri = asTrimmedString(env.GOOGLE_REDIRECT_URI);
+  if (redirectUri) {
+    return redirectUri;
   }
   const url = new URL(request.url);
   return `${url.origin}/callback`;
@@ -115,15 +120,15 @@ function oauthConfigHealth(
   request: Request,
   env: WorkerOAuthEnv,
 ): Record<string, unknown> {
-  const hasClientId = Boolean(asTrimmedString(env.GOOGLE_CLIENT_ID));
-  const hasClientSecret = Boolean(asTrimmedString(env.GOOGLE_CLIENT_SECRET));
+  const clientId = asTrimmedString(env.GOOGLE_CLIENT_ID);
+  const clientSecret = asTrimmedString(env.GOOGLE_CLIENT_SECRET);
   const hasRedirectUri = Boolean(asTrimmedString(env.GOOGLE_REDIRECT_URI));
 
   const missing: string[] = [];
-  if (!hasClientId) {
+  if (!clientId) {
     missing.push("GOOGLE_CLIENT_ID");
   }
-  if (!hasClientSecret) {
+  if (!clientSecret) {
     missing.push("GOOGLE_CLIENT_SECRET");
   }
 
@@ -135,8 +140,8 @@ function oauthConfigHealth(
     token_url: DEFAULT_GOOGLE_TOKEN_URL,
     scope: resolveGoogleScope(env),
     has_redirect_uri_override: hasRedirectUri,
-    has_client_id: hasClientId,
-    has_client_secret: hasClientSecret,
+    has_client_id: Boolean(clientId),
+    has_client_secret: Boolean(clientSecret),
     missing,
   };
 }
@@ -192,10 +197,7 @@ export const googleOAuthDefaultHandler = {
       });
     }
 
-    if (
-      url.pathname === "/.well-known/oauth-protected-resource" ||
-      url.pathname === "/.well-known/oauth-protected-resource/"
-    ) {
+    if (OAUTH_PROTECTED_RESOURCE_PATHS.has(url.pathname)) {
       return Response.json(oauthProtectedResourceMetadata(request));
     }
 

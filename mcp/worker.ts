@@ -6,6 +6,8 @@ import { googleOAuthDefaultHandler } from "./auth-handler.js";
 import { registerCloudflareMcpTools } from "./tools.js";
 import { setRuntimeEnv } from "../youtube-summarizer/settings.js";
 
+const MCP_ROUTE = "/";
+
 function buildServer(): McpServer {
   const server = new McpServer({
     name: "YouTube Summarizer MCP",
@@ -36,7 +38,7 @@ const apiHandler = {
     setRuntimeEnv(toStringEnv(env));
     try {
       const server = buildServer();
-      const handler = createMcpHandler(server, { route: "/" });
+      const handler = createMcpHandler(server, { route: MCP_ROUTE });
       return await handler(request, env, ctx);
     } finally {
       setRuntimeEnv(null);
@@ -45,7 +47,7 @@ const apiHandler = {
 };
 
 export default new OAuthProvider({
-  apiRoute: "/",
+  apiRoute: MCP_ROUTE,
   apiHandler,
   authorizeEndpoint: "/authorize",
   tokenEndpoint: "/token",

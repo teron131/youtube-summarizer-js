@@ -61,15 +61,21 @@ GOOGLE_CLIENT_SECRET_VALUE="$(resolve_value GOOGLE_CLIENT_SECRET "${GOOGLE_CLIEN
 GOOGLE_REDIRECT_URI_VALUE="$(resolve_value GOOGLE_REDIRECT_URI "${GOOGLE_REDIRECT_URI:-}")"
 GOOGLE_SCOPE_VALUE="$(resolve_value GOOGLE_SCOPE "${GOOGLE_SCOPE:-}")"
 
-sync_secret_if_present GEMINI_API_KEY "${GEMINI_API_KEY_VALUE}"
-sync_secret_if_present OPENROUTER_API_KEY "${OPENROUTER_API_KEY_VALUE}"
-sync_secret_if_present SCRAPECREATORS_API_KEY "${SCRAPECREATORS_API_KEY_VALUE}"
-sync_secret_if_present SUPADATA_API_KEY "${SUPADATA_API_KEY_VALUE}"
+for secret_key in \
+  GEMINI_API_KEY \
+  OPENROUTER_API_KEY \
+  SCRAPECREATORS_API_KEY \
+  SUPADATA_API_KEY; do
+  value_key="${secret_key}_VALUE"
+  sync_secret_if_present "${secret_key}" "${!value_key}"
+done
 
 if [[ -n "${GOOGLE_CLIENT_ID_VALUE}" && -n "${GOOGLE_CLIENT_SECRET_VALUE}" ]]; then
   echo "Using GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET from env."
-  sync_secret_if_present GOOGLE_CLIENT_ID "${GOOGLE_CLIENT_ID_VALUE}"
-  sync_secret_if_present GOOGLE_CLIENT_SECRET "${GOOGLE_CLIENT_SECRET_VALUE}"
+  for secret_key in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET; do
+    value_key="${secret_key}_VALUE"
+    sync_secret_if_present "${secret_key}" "${!value_key}"
+  done
 else
   echo "GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET not fully set in env, using gcloud fallback."
   bash scripts/sync_google_oauth_from_gcloud.sh
