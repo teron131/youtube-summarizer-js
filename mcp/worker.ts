@@ -2,7 +2,7 @@ import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpHandler } from "agents/mcp";
 
-import { accessDefaultHandler } from "./auth-handler.js";
+import { googleOAuthDefaultHandler } from "./auth-handler.js";
 import { registerCloudflareMcpTools } from "./tools.js";
 import { setRuntimeEnv } from "../youtube-summarizer/settings.js";
 
@@ -53,5 +53,5 @@ export default new OAuthProvider({
   // Keep tokens stable for clients and avoid refresh-token renewal cycles.
   accessTokenTTL: 60 * 60 * 24 * 30,
   refreshTokenTTL: 0,
-  defaultHandler: accessDefaultHandler,
+  defaultHandler: googleOAuthDefaultHandler,
 });

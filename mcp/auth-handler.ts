@@ -1,5 +1,9 @@
 const AUTH_STATE_PREFIX = "auth-state:";
 const AUTH_STATE_TTL_SECONDS = 600;
+const DEFAULT_GOOGLE_AUTHORIZATION_URL =
+  "https://accounts.google.com/o/oauth2/v2/auth";
+const DEFAULT_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const DEFAULT_GOOGLE_SCOPE = "openid profile email";
 
 interface OAuthAuthRequest {
   clientId: string;
@@ -23,11 +27,12 @@ interface OAuthProviderHelpers {
 }
 
 interface WorkerOAuthEnv extends Record<string, unknown> {
-  ACCESS_AUTHORIZATION_URL?: string;
-  ACCESS_CLIENT_ID?: string;
-  ACCESS_CLIENT_SECRET?: string;
-  ACCESS_REDIRECT_URI?: string;
-  ACCESS_TOKEN_URL?: string;
+  GOOGLE_AUTHORIZATION_URL?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GOOGLE_REDIRECT_URI?: string;
+  GOOGLE_SCOPE?: string;
+  GOOGLE_TOKEN_URL?: string;
   OAUTH_KV: {
     delete(key: string): Promise<void>;
     get(key: string): Promise<string | null>;
@@ -40,7 +45,7 @@ interface WorkerOAuthEnv extends Record<string, unknown> {
   OAUTH_PROVIDER: OAuthProviderHelpers;
 }
 
-interface AccessTokenResponse {
+interface TokenResponse {
   access_token?: string;
   id_token?: string;
   refresh_token?: string;
@@ -53,6 +58,31 @@ function ensureSecret(value: unknown, key: string): string {
     throw new Error(`Missing required secret: ${key}`);
   }
   return value.trim();
+}
+
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function resolveGoogleEndpoint(
+  env: WorkerOAuthEnv,
+  type: "authorization" | "token",
+): string {
+  if (type === "authorization") {
+    return (
+      asTrimmedString(env.GOOGLE_AUTHORIZATION_URL) ??
+      DEFAULT_GOOGLE_AUTHORIZATION_URL
+    );
+  }
+  return asTrimmedString(env.GOOGLE_TOKEN_URL) ?? DEFAULT_GOOGLE_TOKEN_URL;
+}
+
+function resolveGoogleScope(env: WorkerOAuthEnv): string {
+  return asTrimmedString(env.GOOGLE_SCOPE) ?? DEFAULT_GOOGLE_SCOPE;
 }
 
 function base64UrlDecode(value: string): string {
@@ -76,8 +106,8 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 }
 
 function callbackUrl(request: Request, env: WorkerOAuthEnv): string {
-  if (typeof env.ACCESS_REDIRECT_URI === "string" && env.ACCESS_REDIRECT_URI) {
-    return env.ACCESS_REDIRECT_URI;
+  if (typeof env.GOOGLE_REDIRECT_URI === "string" && env.GOOGLE_REDIRECT_URI) {
+    return env.GOOGLE_REDIRECT_URI;
   }
   const url = new URL(request.url);
   return `${url.origin}/callback`;
@@ -87,16 +117,52 @@ function oauthStateKey(state: string): string {
   return `${AUTH_STATE_PREFIX}${state}`;
 }
 
-async function exchangeAccessToken(
+function oauthConfigHealth(
+  request: Request,
+  env: WorkerOAuthEnv,
+): Record<string, unknown> {
+  const hasClientId = Boolean(asTrimmedString(env.GOOGLE_CLIENT_ID));
+  const hasClientSecret = Boolean(asTrimmedString(env.GOOGLE_CLIENT_SECRET));
+  const hasRedirectUri = Boolean(asTrimmedString(env.GOOGLE_REDIRECT_URI));
+  const hasCustomAuthorizationUrl = Boolean(
+    asTrimmedString(env.GOOGLE_AUTHORIZATION_URL),
+  );
+  const hasCustomTokenUrl = Boolean(asTrimmedString(env.GOOGLE_TOKEN_URL));
+
+  const missing: string[] = [];
+  if (!hasClientId) {
+    missing.push("GOOGLE_CLIENT_ID");
+  }
+  if (!hasClientSecret) {
+    missing.push("GOOGLE_CLIENT_SECRET");
+  }
+
+  return {
+    ready: missing.length === 0,
+    provider: "google",
+    callback_url: callbackUrl(request, env),
+    authorization_url: resolveGoogleEndpoint(env, "authorization"),
+    token_url: resolveGoogleEndpoint(env, "token"),
+    scope: resolveGoogleScope(env),
+    has_redirect_uri_override: hasRedirectUri,
+    has_custom_authorization_url: hasCustomAuthorizationUrl,
+    has_custom_token_url: hasCustomTokenUrl,
+    has_client_id: hasClientId,
+    has_client_secret: hasClientSecret,
+    missing,
+  };
+}
+
+async function exchangeGoogleToken(
   request: Request,
   env: WorkerOAuthEnv,
   code: string,
-): Promise<AccessTokenResponse> {
-  const tokenUrl = ensureSecret(env.ACCESS_TOKEN_URL, "ACCESS_TOKEN_URL");
-  const clientId = ensureSecret(env.ACCESS_CLIENT_ID, "ACCESS_CLIENT_ID");
+): Promise<TokenResponse> {
+  const tokenUrl = resolveGoogleEndpoint(env, "token");
+  const clientId = ensureSecret(env.GOOGLE_CLIENT_ID, "GOOGLE_CLIENT_ID");
   const clientSecret = ensureSecret(
-    env.ACCESS_CLIENT_SECRET,
-    "ACCESS_CLIENT_SECRET",
+    env.GOOGLE_CLIENT_SECRET,
+    "GOOGLE_CLIENT_SECRET",
   );
 
   const body = new URLSearchParams({
@@ -117,13 +183,13 @@ async function exchangeAccessToken(
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`Access token exchange failed: ${detail || response.status}`);
+    throw new Error(`Google token exchange failed: ${detail || response.status}`);
   }
 
-  return (await response.json()) as AccessTokenResponse;
+  return (await response.json()) as TokenResponse;
 }
 
-export const accessDefaultHandler = {
+export const googleOAuthDefaultHandler = {
   async fetch(
     request: Request,
     envInput: unknown,
@@ -135,28 +201,26 @@ export const accessDefaultHandler = {
     if (url.pathname === "/health") {
       return Response.json({
         status: "ok",
+        oauth: oauthConfigHealth(request, env),
       });
     }
 
     if (url.pathname === "/authorize") {
       const oauthRequest = await env.OAUTH_PROVIDER.parseAuthRequest(request);
-      const accessAuthUrl = ensureSecret(
-        env.ACCESS_AUTHORIZATION_URL,
-        "ACCESS_AUTHORIZATION_URL",
-      );
+      const authorizationUrl = resolveGoogleEndpoint(env, "authorization");
       const state = crypto.randomUUID();
       await env.OAUTH_KV.put(oauthStateKey(state), JSON.stringify(oauthRequest), {
         expirationTtl: AUTH_STATE_TTL_SECONDS,
       });
 
-      const authUrl = new URL(accessAuthUrl);
+      const authUrl = new URL(authorizationUrl);
       authUrl.searchParams.set(
         "client_id",
-        ensureSecret(env.ACCESS_CLIENT_ID, "ACCESS_CLIENT_ID"),
+        ensureSecret(env.GOOGLE_CLIENT_ID, "GOOGLE_CLIENT_ID"),
       );
       authUrl.searchParams.set("redirect_uri", callbackUrl(request, env));
       authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", "openid profile email");
+      authUrl.searchParams.set("scope", resolveGoogleScope(env));
       authUrl.searchParams.set("state", state);
       return Response.redirect(authUrl.toString(), 302);
     }
@@ -176,7 +240,7 @@ export const accessDefaultHandler = {
       }
 
       const oauthRequest = JSON.parse(serializedRequest) as OAuthAuthRequest;
-      const tokenResponse = await exchangeAccessToken(request, env, code);
+      const tokenResponse = await exchangeGoogleToken(request, env, code);
       const tokenPayload = tokenResponse.id_token
         ? decodeJwtPayload(tokenResponse.id_token)
         : {};
@@ -184,7 +248,7 @@ export const accessDefaultHandler = {
       const userId =
         (typeof tokenPayload.email === "string" && tokenPayload.email) ||
         (typeof tokenPayload.sub === "string" && tokenPayload.sub) ||
-        "access-user";
+        "google-user";
       const scope =
         oauthRequest.scope.length > 0 ? oauthRequest.scope : ["openid"];
 
@@ -192,7 +256,7 @@ export const accessDefaultHandler = {
         request: oauthRequest,
         userId,
         metadata: {
-          provider: "cloudflare-access",
+          provider: "google",
           scope,
         },
         scope,
