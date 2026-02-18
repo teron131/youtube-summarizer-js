@@ -42,13 +42,7 @@ function buildMetadata(
   startTime: Date,
   extraMetadata?: Record<string, number>,
 ): Record<string, string | number> {
-  const metadata: Record<string, string | number> = {
-    processing_time: processingTime(startTime),
-  };
-  if (extraMetadata) {
-    Object.assign(metadata, extraMetadata);
-  }
-  return metadata;
+  return { processing_time: processingTime(startTime), ...extraMetadata };
 }
 
 function buildSummarySuccessResult(
@@ -109,9 +103,7 @@ export async function scrapeTool(url: string): Promise<ToolResult> {
     message: "Video scraped successfully",
     url: normalizedUrl,
     transcript,
-    metadata: {
-      processing_time: processingTime(start),
-    },
+    metadata: buildMetadata(start),
   };
 }
 

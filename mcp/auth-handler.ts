@@ -76,9 +76,8 @@ function resolveGoogleScope(env: WorkerOAuthEnv): string {
 
 function base64UrlDecode(value: string): string {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = normalized.length % 4;
-  const padded = padding ? normalized + "=".repeat(4 - padding) : normalized;
-  return atob(padded);
+  const padding = (4 - (normalized.length % 4)) % 4;
+  return atob(normalized + "=".repeat(padding));
 }
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
@@ -95,12 +94,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 }
 
 function callbackUrl(request: Request, env: WorkerOAuthEnv): string {
-  const redirectUri = asTrimmedString(env.GOOGLE_REDIRECT_URI);
-  if (redirectUri) {
-    return redirectUri;
-  }
-  const url = new URL(request.url);
-  return `${url.origin}/callback`;
+  return asTrimmedString(env.GOOGLE_REDIRECT_URI) ?? `${new URL(request.url).origin}/callback`;
 }
 
 function oauthStateKey(state: string): string {
@@ -123,10 +117,10 @@ function oauthConfigHealth(
   const clientId = asTrimmedString(env.GOOGLE_CLIENT_ID);
   const clientSecret = asTrimmedString(env.GOOGLE_CLIENT_SECRET);
   const hasRedirectUri = Boolean(asTrimmedString(env.GOOGLE_REDIRECT_URI));
-  const missing: string[] = [
+  const missing = [
     !clientId && "GOOGLE_CLIENT_ID",
     !clientSecret && "GOOGLE_CLIENT_SECRET",
-  ].filter((key): key is string => Boolean(key));
+  ].filter(Boolean) as string[];
 
   return {
     ready: missing.length === 0,
