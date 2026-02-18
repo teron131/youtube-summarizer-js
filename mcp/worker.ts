@@ -20,13 +20,10 @@ function buildServer(): McpServer {
 function toStringEnv(
   env: Record<string, unknown>,
 ): Record<string, string | undefined> {
-  const runtimeEnv: Record<string, string | undefined> = {};
-  for (const [key, value] of Object.entries(env)) {
-    if (typeof value === "string") {
-      runtimeEnv[key] = value;
-    }
-  }
-  return runtimeEnv;
+  const entries = Object.entries(env).filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string",
+  );
+  return Object.fromEntries(entries);
 }
 
 const apiHandler = {

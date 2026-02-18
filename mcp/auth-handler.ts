@@ -123,14 +123,10 @@ function oauthConfigHealth(
   const clientId = asTrimmedString(env.GOOGLE_CLIENT_ID);
   const clientSecret = asTrimmedString(env.GOOGLE_CLIENT_SECRET);
   const hasRedirectUri = Boolean(asTrimmedString(env.GOOGLE_REDIRECT_URI));
-
-  const missing: string[] = [];
-  if (!clientId) {
-    missing.push("GOOGLE_CLIENT_ID");
-  }
-  if (!clientSecret) {
-    missing.push("GOOGLE_CLIENT_SECRET");
-  }
+  const missing: string[] = [
+    !clientId && "GOOGLE_CLIENT_ID",
+    !clientSecret && "GOOGLE_CLIENT_SECRET",
+  ].filter((key): key is string => Boolean(key));
 
   return {
     ready: missing.length === 0,
@@ -181,6 +177,14 @@ async function exchangeGoogleToken(
   return (await response.json()) as TokenResponse;
 }
 
+function tokenField(
+  payload: Record<string, unknown>,
+  key: "email" | "name" | "sub",
+): string | null {
+  const value = payload[key];
+  return typeof value === "string" ? value : null;
+}
+
 export const googleOAuthDefaultHandler = {
   async fetch(
     request: Request,
@@ -189,82 +193,77 @@ export const googleOAuthDefaultHandler = {
   ): Promise<Response> {
     const env = envInput as WorkerOAuthEnv;
     const url = new URL(request.url);
+    const { pathname } = url;
 
-    if (url.pathname === "/health") {
-      return Response.json({
-        status: "ok",
-        oauth: oauthConfigHealth(request, env),
-      });
-    }
-
-    if (OAUTH_PROTECTED_RESOURCE_PATHS.has(url.pathname)) {
+    if (OAUTH_PROTECTED_RESOURCE_PATHS.has(pathname)) {
       return Response.json(oauthProtectedResourceMetadata(request));
     }
 
-    if (url.pathname === "/authorize") {
-      const oauthRequest = await env.OAUTH_PROVIDER.parseAuthRequest(request);
-      const state = crypto.randomUUID();
-      await env.OAUTH_KV.put(oauthStateKey(state), JSON.stringify(oauthRequest), {
-        expirationTtl: AUTH_STATE_TTL_SECONDS,
-      });
+    switch (pathname) {
+      case "/health":
+        return Response.json({
+          status: "ok",
+          oauth: oauthConfigHealth(request, env),
+        });
+      case "/authorize": {
+        const oauthRequest = await env.OAUTH_PROVIDER.parseAuthRequest(request);
+        const state = crypto.randomUUID();
+        await env.OAUTH_KV.put(
+          oauthStateKey(state),
+          JSON.stringify(oauthRequest),
+          { expirationTtl: AUTH_STATE_TTL_SECONDS },
+        );
 
-      const authUrl = new URL(DEFAULT_GOOGLE_AUTHORIZATION_URL);
-      authUrl.searchParams.set(
-        "client_id",
-        ensureSecret(env.GOOGLE_CLIENT_ID, "GOOGLE_CLIENT_ID"),
-      );
-      authUrl.searchParams.set("redirect_uri", callbackUrl(request, env));
-      authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", resolveGoogleScope(env));
-      authUrl.searchParams.set("state", state);
-      return Response.redirect(authUrl.toString(), 302);
-    }
-
-    if (url.pathname === "/callback") {
-      const code = url.searchParams.get("code");
-      const state = url.searchParams.get("state");
-      if (!code || !state) {
-        return new Response("Missing callback parameters", { status: 400 });
+        const authUrl = new URL(DEFAULT_GOOGLE_AUTHORIZATION_URL);
+        authUrl.searchParams.set(
+          "client_id",
+          ensureSecret(env.GOOGLE_CLIENT_ID, "GOOGLE_CLIENT_ID"),
+        );
+        authUrl.searchParams.set("redirect_uri", callbackUrl(request, env));
+        authUrl.searchParams.set("response_type", "code");
+        authUrl.searchParams.set("scope", resolveGoogleScope(env));
+        authUrl.searchParams.set("state", state);
+        return Response.redirect(authUrl.toString(), 302);
       }
+      case "/callback": {
+        const code = url.searchParams.get("code");
+        const state = url.searchParams.get("state");
+        if (!code || !state) {
+          return new Response("Missing callback parameters", { status: 400 });
+        }
 
-      const key = oauthStateKey(state);
-      const serializedRequest = await env.OAUTH_KV.get(key);
-      await env.OAUTH_KV.delete(key);
-      if (!serializedRequest) {
-        return new Response("Authorization session expired", { status: 400 });
-      }
+        const stateKey = oauthStateKey(state);
+        const serializedRequest = await env.OAUTH_KV.get(stateKey);
+        await env.OAUTH_KV.delete(stateKey);
+        if (!serializedRequest) {
+          return new Response("Authorization session expired", { status: 400 });
+        }
 
-      const oauthRequest = JSON.parse(serializedRequest) as OAuthAuthRequest;
-      const tokenResponse = await exchangeGoogleToken(request, env, code);
-      const tokenPayload = tokenResponse.id_token
-        ? decodeJwtPayload(tokenResponse.id_token)
-        : {};
-
-      const userId =
-        (typeof tokenPayload.email === "string" && tokenPayload.email) ||
-        (typeof tokenPayload.sub === "string" && tokenPayload.sub) ||
-        "google-user";
-      const scope =
-        oauthRequest.scope.length > 0 ? oauthRequest.scope : ["openid"];
-
-      const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
-        request: oauthRequest,
-        userId,
-        metadata: {
-          provider: "google",
+        const oauthRequest = JSON.parse(serializedRequest) as OAuthAuthRequest;
+        const tokenResponse = await exchangeGoogleToken(request, env, code);
+        const tokenPayload = decodeJwtPayload(tokenResponse.id_token ?? "");
+        const email = tokenField(tokenPayload, "email");
+        const subject = tokenField(tokenPayload, "sub");
+        const scope = oauthRequest.scope.length > 0 ? oauthRequest.scope : ["openid"];
+        const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
+          request: oauthRequest,
+          userId: email ?? subject ?? "google-user",
+          metadata: {
+            provider: "google",
+            scope,
+          },
           scope,
-        },
-        scope,
-        props: {
-          access_token: tokenResponse.access_token ?? null,
-          email: typeof tokenPayload.email === "string" ? tokenPayload.email : null,
-          name: typeof tokenPayload.name === "string" ? tokenPayload.name : null,
-          sub: typeof tokenPayload.sub === "string" ? tokenPayload.sub : null,
-        },
-      });
-      return Response.redirect(redirectTo, 302);
+          props: {
+            access_token: tokenResponse.access_token ?? null,
+            email,
+            name: tokenField(tokenPayload, "name"),
+            sub: subject,
+          },
+        });
+        return Response.redirect(redirectTo, 302);
+      }
+      default:
+        return new Response("Not found", { status: 404 });
     }
-
-    return new Response("Not found", { status: 404 });
   },
 };

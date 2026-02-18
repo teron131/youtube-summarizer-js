@@ -51,13 +51,16 @@ if [[ -z "${GOOGLE_CLIENT_SECRET}" ]]; then
 fi
 
 echo "Writing secrets to Cloudflare Worker '${WORKER_NAME}'..."
-printf "%s" "${GOOGLE_CLIENT_ID}" | npx wrangler secret put GOOGLE_CLIENT_ID --name "${WORKER_NAME}"
-printf "%s" "${GOOGLE_CLIENT_SECRET}" | npx wrangler secret put GOOGLE_CLIENT_SECRET --name "${WORKER_NAME}"
+for secret_key in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET; do
+  printf "%s" "${!secret_key}" | npx wrangler secret put "${secret_key}" --name "${WORKER_NAME}"
+done
 
-echo
-echo "Sync complete."
-echo "Ensure Google OAuth redirect URI includes:"
-echo "  https://<your-worker-domain>/callback"
-echo
-echo "Verify:"
-echo "  curl -sS https://<your-worker-domain>/health"
+cat <<'EOF'
+
+Sync complete.
+Ensure Google OAuth redirect URI includes:
+  https://<your-worker-domain>/callback
+
+Verify:
+  curl -sS https://<your-worker-domain>/health
+EOF
