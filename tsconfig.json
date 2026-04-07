@@ -1,22 +1,22 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "outDir": "dist",
-    "rootDir": ".",
-    "types": ["node", "vitest/globals"]
-  },
-  "include": [
-    "mcp/**/*.ts",
-    "youtube-summarizer/**/*.ts",
-    "routes/**/*.ts",
-    "types/**/*.d.ts",
-    "tests/**/*.ts"
-  ]
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"outDir": "dist",
+		"rootDir": ".",
+		"types": ["node", "vitest/globals"]
+	},
+	"include": [
+		"mcp/**/*.ts",
+		"youtube-summarizer/**/*.ts",
+		"routes/**/*.ts",
+		"types/**/*.d.ts",
+		"tests/**/*.ts"
+	]
 }

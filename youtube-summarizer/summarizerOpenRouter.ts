@@ -1,32 +1,32 @@
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { getSettings } from "./settings.js";
 import { ChatOpenRouter } from "./llmClients.js";
 import { getLangchainSummaryPrompt } from "./prompts.js";
-import { Summary, SummarySchema } from "./schemas.js";
+import { type Summary, SummarySchema } from "./schemas.js";
+import { getSettings } from "./settings.js";
 
 export async function summarizerOpenRouter(
-  transcript: string,
-  targetLanguage: string | null = null,
+	transcript: string,
+	targetLanguage: string | null = null,
 ): Promise<Summary> {
-  const settings = getSettings();
-  const cleanTranscript = transcript.trim();
+	const settings = getSettings();
+	const cleanTranscript = transcript.trim();
 
-  if (!cleanTranscript) {
-    throw new Error("Transcript cannot be empty");
-  }
+	if (!cleanTranscript) {
+		throw new Error("Transcript cannot be empty");
+	}
 
-  const model = settings.openrouterSummaryModel;
-  const llm = ChatOpenRouter({
-    model,
-    reasoningEffort: settings.openrouterReasoningEffort,
-    temperature: 0,
-    timeoutMs: settings.llmTimeoutSeconds * 1000,
-  }).withStructuredOutput(SummarySchema);
+	const model = settings.openrouterSummaryModel;
+	const llm = ChatOpenRouter({
+		model,
+		reasoningEffort: settings.openrouterReasoningEffort,
+		temperature: 0,
+		timeoutMs: settings.llmTimeoutSeconds * 1000,
+	}).withStructuredOutput(SummarySchema);
 
-  const messages = [
-    new SystemMessage(getLangchainSummaryPrompt(targetLanguage)),
-    new HumanMessage(`Transcript:\n${cleanTranscript}`),
-  ];
+	const messages = [
+		new SystemMessage(getLangchainSummaryPrompt(targetLanguage)),
+		new HumanMessage(`Transcript:\n${cleanTranscript}`),
+	];
 
-  return await llm.invoke(messages);
+	return await llm.invoke(messages);
 }

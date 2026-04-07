@@ -1,5 +1,5 @@
 export {
-  extractTranscriptText,
-  hasTranscriptProviderKey,
-  scrapeYoutube,
+	extractTranscriptText,
+	hasTranscriptProviderKey,
+	scrapeYoutube,
 } from "./scraper.js";

@@ -3,6 +3,7 @@
 ## Project Summary
 
 TypeScript MCP server that exposes `health`, `scrape`, and `summarize` tools for YouTube content. The server runs in two runtimes:
+
 - Node stdio (`mcp/server.ts`) for local MCP clients
 - Cloudflare Worker (`mcp/worker.ts`) with optional Google OAuth
 
@@ -18,6 +19,7 @@ The core business logic is centralized in [`mcp/core.ts`](/Users/teron/Projects/
 - [`youtube-summarizer/index.ts`](/Users/teron/Projects/youtube-summarizer-js/youtube-summarizer/index.ts): top-level exports for reusable library surface.
 
 Module guides:
+
 - [`mcp/AGENTS.md`](/Users/teron/Projects/youtube-summarizer-js/mcp/AGENTS.md)
 - [`youtube-summarizer/AGENTS.md`](/Users/teron/Projects/youtube-summarizer-js/youtube-summarizer/AGENTS.md)
 - [`youtube-summarizer/scraper/AGENTS.md`](/Users/teron/Projects/youtube-summarizer-js/youtube-summarizer/scraper/AGENTS.md)
@@ -29,6 +31,7 @@ Module guides:
 ## Core Flows and Rationale
 
 1. MCP request flow:
+
 - Runtime adapter (`mcp/server.ts` or `mcp/worker.ts`) registers tools via [`mcp/tools.ts`](/Users/teron/Projects/youtube-summarizer-js/mcp/tools.ts).
 - Tool handlers call shared implementations in [`mcp/core.ts`](/Users/teron/Projects/youtube-summarizer-js/mcp/core.ts).
 - `summarizeTool` resolves provider via [`providerResolver.ts`](/Users/teron/Projects/youtube-summarizer-js/youtube-summarizer/providerResolver.ts):
@@ -36,14 +39,17 @@ Module guides:
   - Else use OpenRouter.
 
 2. Summarization paths:
+
 - Gemini path: [`summarizerGemini.ts`](/Users/teron/Projects/youtube-summarizer-js/youtube-summarizer/summarizerGemini.ts) sends video URL directly to Gemini and parses JSON into [`SummarySchema`](/Users/teron/Projects/youtube-summarizer-js/youtube-summarizer/schemas.ts).
 - OpenRouter path: scrape transcript first (`scraper/scraper.ts`), then summarize transcript via [`summarizerOpenRouter.ts`](/Users/teron/Projects/youtube-summarizer-js/youtube-summarizer/summarizerOpenRouter.ts).
 
 3. Transcript path:
+
 - [`scraper/scraper.ts`](/Users/teron/Projects/youtube-summarizer-js/youtube-summarizer/scraper/scraper.ts) tries ScrapeCreators first, then Supadata fallback.
 - Empty/invalid transcript is rejected at parse stage, not silently accepted.
 
 4. Config model:
+
 - [`settings.ts`](/Users/teron/Projects/youtube-summarizer-js/youtube-summarizer/settings.ts) is the single settings authority.
 - `runtimeEnv` overrides `process.env` for Worker requests.
 - Settings are cached and require `resetSettingsCache()` when env changes during tests.
