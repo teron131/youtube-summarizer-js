@@ -27,7 +27,7 @@ sync_secret() {
     echo "Skipping ${key} (not set in env)."
     return 0
   fi
-  printf "%s" "${value}" | npx wrangler secret put "${key}" --name "${WORKER_NAME}"
+  printf "%s" "${value}" | pnpm exec wrangler secret put "${key}" --name "${WORKER_NAME}"
 }
 
 echo "Syncing Worker secrets for '${WORKER_NAME}'..."

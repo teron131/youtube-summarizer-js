@@ -33,7 +33,7 @@
 
 - `sync_worker_secrets.sh` may call `sync_google_oauth_from_gcloud.sh` as fallback when OAuth creds are absent locally.
 - External boundaries:
-  - `npx wrangler secret put`
+  - `pnpm exec wrangler secret put`
   - `gcloud run services describe`
   - `gcloud secrets versions access`
 

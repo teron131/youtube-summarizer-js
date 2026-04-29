@@ -2,6 +2,7 @@
     "name": "youtube-summarizer-js-mcp",
     "version": "0.1.0",
     "private": true,
+    "packageManager": "pnpm@10.28.1",
     "type": "module",
     "description": "TypeScript MCP server migration for YouTube summarizer",
     "engines": {

@@ -52,7 +52,7 @@ fi
 
 echo "Writing secrets to Cloudflare Worker '${WORKER_NAME}'..."
 for secret_key in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET; do
-  printf "%s" "${!secret_key}" | npx wrangler secret put "${secret_key}" --name "${WORKER_NAME}"
+  printf "%s" "${!secret_key}" | pnpm exec wrangler secret put "${secret_key}" --name "${WORKER_NAME}"
 done
 
 cat <<'EOF'
